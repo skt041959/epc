@@ -23,7 +23,7 @@ def extract(soup):
         week = cols[1].find_all(text=True)[0][1]
         teacher = cols[3].find_all(text=True)[0]
         date, time = cols[5].find_all(text=True)
-        number = cols[11].find_all(text=True)[0]
+        number = cols[10].find_all(text=True)[0]
         o = oralclass(action, name, week, teacher, date, time, number)
         classes.append(o)
 
@@ -53,8 +53,8 @@ def main():
         re = requests.get(url="http://epc.ustc.edu.cn/m_practice.asp?second_id=2002", cookies=cookies)
         soup = BS(re.content)
         r = extract(soup)
+        print(datetime.today())
         if r:
-            print(datetime.today())
             for c in r:
                 print(">>> ", c.week, c.date, c.time, c.number)
             find_note = Notify.Notification.new("EPC found", "EPC found", "dialog-information")
