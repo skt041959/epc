@@ -2,15 +2,23 @@
 # encoding: utf-8
 
 import requests
-from bs4 import BeautifulSoup as BS
+
 from collections import namedtuple
+
 from time import sleep
 from datetime import datetime
 from random import randrange
+
+from bs4 import BeautifulSoup as BS
 from gi.repository import Notify
+from argparse import ArgumentParser
+from http.cookies import SimpleCookie
 
 
 oralclass = namedtuple('oralclass', 'action, name, week, teacher, date, time, number')
+
+def cookies(string):
+    pass
 
 def extract(soup):
     classes = []
@@ -28,7 +36,7 @@ def extract(soup):
         classes.append(o)
 
     if classes:
-        filtedclasses = [c for c in classes if int(c.week) < 6]
+        filtedclasses = [c for c in classes if int(c.week) < 8]
         return filtedclasses
 
     else:
@@ -39,16 +47,8 @@ def extract(soup):
                 return None
 
 
-def main():
+def main(cookies):
     Notify.init("epc")
-    cookies = dict(
-            #ASPSESSIONIDASDDSDCT="KNPJPJABLABCPHDEFLFOMPMO",
-            ASPSESSIONIDASBCRCCT="KNPJPJABLABCPHDEFLFOMPMO",
-            counter="1",
-            term="2",
-            year="2014",
-            querytype="")
-
     while 1:
         re = requests.get(url="http://epc.ustc.edu.cn/m_practice.asp?second_id=2002", cookies=cookies)
         soup = BS(re.content)
@@ -69,7 +69,26 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = ArgumentParser(description='monitor the epc site')
+
+    parser.add_argument('-c', type=SimpleCookie, nargs='+',
+                       help='offer the cookies')
+
+    args = parser.parse_args()
+    cookies = vars(args)['c'][0]
+
+    #cookies = dict(
+    #        ASPSESSIONIDCSCBTCCS="BEBIEBKCNDADLBKHHMHIFPGB",
+    #        ASPSESSIONIDCQACQDCS="JGJCMNGDEDACFBAIJNDPNPGG",
+    #        counter="1",
+    #        querytype="")
+
+    c = dict()
+    for k,v in cookies.items():
+        c[k] = v.value
+
+    main(c)
     #extract(BS(open('1.html')))
 
 
