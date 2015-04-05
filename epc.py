@@ -88,7 +88,9 @@ def main(cookies, week_line):
             outdate_note.show()
             break
 
-        sleep( (track and randrange(2, 15, 2) or 1 )*60)
+        delay = (track and randrange(2, 15, 2) or 1 )
+        print("delay {0}".format(delay))
+        sleep( delay*60)
 
 
 if __name__ == '__main__':
