@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import sys
 import requests
 
 from collections import namedtuple
@@ -49,14 +50,32 @@ def extract(soup):
 
 def main(cookies):
     Notify.init("epc")
+    url_top = "http://epc.ustc.edu.cn/m_practice.asp?second_id=2002"
+    url_sit = "http://epc.ustc.edu.cn/m_practice.asp?second_id=2001"
+
     while 1:
-        re = requests.get(url="http://epc.ustc.edu.cn/m_practice.asp?second_id=2002", cookies=cookies)
+        print(datetime.today())
+
+        re = requests.get(url=url_top, cookies=cookies)
         soup = BS(re.content)
         r = extract(soup)
-        print(datetime.today())
         if r:
             for c in r:
-                print(">>> ", c.week, c.date, c.time, c.number)
+                print("topical >>> ", c.week, c.date, c.time, c.number)
+            find_note = Notify.Notification.new("EPC found", "EPC found", "dialog-information")
+            find_note.show()
+            #res = requests.post(url="http://epc.ustc.edu.cn/"+r.action, cookies=cookies)
+        elif r is None:
+            outdate_note = Notify.Notification.new("PEC outdate", "EPC cookies outdate", "dialog-warning")
+            outdate_note.show()
+            break
+
+        re = requests.get(url=url_top, cookies=cookies)
+        soup = BS(re.content)
+        r = extract(soup)
+        if r:
+            for c in r:
+                print("situation >>> ", c.week, c.date, c.time, c.number)
             find_note = Notify.Notification.new("EPC found", "EPC found", "dialog-information")
             find_note.show()
             #res = requests.post(url="http://epc.ustc.edu.cn/"+r.action, cookies=cookies)
@@ -70,19 +89,17 @@ def main(cookies):
 
 if __name__ == '__main__':
 
+    if len(sys.argv) == 1:
+        sys.argv.append('--help')
+
     parser = ArgumentParser(description='monitor the epc site')
 
-    parser.add_argument('-c', type=SimpleCookie, nargs='+',
+    parser.add_argument('-c', '--cookie', type=SimpleCookie,
                        help='offer the cookies')
 
     args = parser.parse_args()
-    cookies = vars(args)['c'][0]
-
-    #cookies = dict(
-    #        ASPSESSIONIDCSCBTCCS="BEBIEBKCNDADLBKHHMHIFPGB",
-    #        ASPSESSIONIDCQACQDCS="JGJCMNGDEDACFBAIJNDPNPGG",
-    #        counter="1",
-    #        querytype="")
+    #import ipdb; ipdb.set_trace()
+    cookies = args.cookie
 
     c = dict()
     for k,v in cookies.items():
@@ -90,6 +107,4 @@ if __name__ == '__main__':
 
     main(c)
     #extract(BS(open('1.html')))
-
-
 
