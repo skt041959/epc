@@ -6,20 +6,19 @@ import requests
 
 from collections import namedtuple
 
-from time import sleep
+from time import sleep, mktime, strptime
 from datetime import datetime
 from random import randrange
 
 from bs4 import BeautifulSoup as BS
-from gi.repository import Notify
+#from gi.repository import Notify
+import notify2
 from argparse import ArgumentParser
 from http.cookies import SimpleCookie
 
+from PyQt4 import QtCore, QtGui
 
 oralclass = namedtuple('oralclass', 'action, name, week, day, teacher, date, time, number')
-
-def cookies(string):
-    pass
 
 def extract(soup, line):
     classes = []
@@ -38,65 +37,138 @@ def extract(soup, line):
         classes.append(o)
 
     if classes:
-        filtedclasses = [c for c in classes if int(c.week) <= line]
+        #filtedclasses = [c for c in classes if int(c.week) <= line]
+        filtedclasses = [c for c in classes if (datetime.fromtimestamp(mktime(strptime(c.date, "%Y-%m-%d")))-datetime.today()).days < 7]
         return filtedclasses
 
     else:
         text = soup.find_all(text=True)
         for e in text:
             if e == u'登录后可以查看详细信息':
-                print(soup.prettify())
+                #print(soup.prettify())
                 return None
 
+class EPC_Quary(QtGui.QMainWindow):
 
-def main(cookies, week_line):
-    Notify.init("epc")
-    url_top = "http://epc.ustc.edu.cn/m_practice.asp?second_id=2002"
-    url_sit = "http://epc.ustc.edu.cn/m_practice.asp?second_id=2001"
+    start = QtCore.pyqtSignal()
 
-    while 1:
+    def __init__(self, cookie=dict(), week_line=None):
+        super(EPC_Quary, self).__init__()
+        notify2.init("epc")
+
+        self.url_top = "http://epc.ustc.edu.cn/m_practice.asp?second_id=2002"
+        self.url_sit = "http://epc.ustc.edu.cn/m_practice.asp?second_id=2001"
+
+        self.ignore_list = []
+        self.cookie = cookie
+        self.week_line = week_line
+
+        self.class_menu = QtGui.QMenu(self)
+
+        icon = QtGui.QIcon(style.standardPixmap(QtGui.QStyle.SP_FileIcon))
+        self.trayIcon = QtGui.QSystemTrayIcon(icon, self)
+        self.trayIcon.setContextMenu(self.class_menu)
+        self.trayIcon.show()
+        self.trayIcon.setVisible(True)
+
+        self.exitAction = QtGui.QAction("Exit", self)
+        self.exitAction.triggered.connect(QtGui.QApplication.quit)
+
+        self.class_menu.addAction(self.exitAction)
+
+        #self.input_cookie.connect(self.get_cookie)
+        #self.input_cookie.emit()
+
+        QtCore.QTimer.singleShot(0, self.quary)
+        #self.start.connect(self.quary)
+        #self.start.emit()
+
+
+    def setVisible(self, visible):
+        super(EPC_Quary, self).setVisible(visible)
+
+
+    def ignore(self, action):
+        print("ignore {0}".format(action.text()))
+        s = action.text()
+        self.ignore_list.append(action.text())
+        print(self.ignore_list)
+        print(s in self.ignore_list)
+
+
+    def quary(self):
+        week_line = 7
+        if not self.cookie:
+            s, flag = QtGui.QInputDialog.getText(self, "EPC_Quary", "Cookie")
+            if flag:
+                cookies = SimpleCookie(s.strip('"'))
+                if cookies:
+                    for k,v in cookies.items():
+                        self.cookie[k] = v.value
+                print(self.cookie)
+            else:
+                return False
+
         print(datetime.today())
         track = False
+        self.class_menu.clear()
+        self.class_group = QtGui.QActionGroup(self)
+        self.class_group.triggered.connect(self.ignore)
 
-        re = requests.get(url=url_top, cookies=cookies)
+        re = requests.get(url=self.url_top, cookies=self.cookie)
         soup = BS(re.content)
         r = extract(soup, week_line)
         if r:
+            n = []
             for c in r:
-                print("situation >>> ", c.week, c.day, c.date, c.time, c.number)
-            find_note = Notify.Notification.new("EPC found", "EPC found", "dialog-information")
+                print("topical >>> ", c.week, c.day, c.date, c.time, c.number)
+                t = "{0} {1}".format(c.date, c.time)
+                if t in self.ignore_list:
+                    continue
+                n.append(t)
+                a = self.class_menu.addAction(t)
+                #a.triggered.connect(self.ignore)
+                self.class_group.addAction(a)
+
+            find_note = notify2.Notification("EPC found", "EPC found topical\n{0}".format('\n'.join(n)), "dialog-information")
             find_note.show()
             track = True
-            #res = requests.post(url="http://epc.ustc.edu.cn/"+r.action, cookies=cookies)
         elif r is None:
-            outdate_note = Notify.Notification.new("PEC outdate", "EPC cookies outdate", "dialog-warning")
+            outdate_note = notify2.Notification("PEC outdate", "EPC cookies outdate", "dialog-warning")
             outdate_note.show()
-            break
 
-        re = requests.get(url=url_sit, cookies=cookies)
+        re = requests.get(url=self.url_sit, cookies=self.cookie)
         soup = BS(re.content)
         r = extract(soup, week_line)
         if r:
+            n = []
             for c in r:
                 print("situation >>> ", c.week, c.day, c.date, c.time, c.number)
-            find_note = Notify.Notification.new("EPC found", "EPC found", "dialog-information")
+                t = "{0} {1}".format(c.date, c.time)
+                if n in self.ignore_list:
+                    print(n, self.ignore_list)
+                    continue
+                n.append(t)
+                a = self.class_menu.addAction(t)
+                #a.triggered.connect(self.ignore)
+                self.class_group.addAction(a)
+
+            find_note = notify2.Notification("EPC found", "EPC found situation\n{0}".format('\n'.join(n)), "dialog-information")
             find_note.show()
             track = True
-            #res = requests.post(url="http://epc.ustc.edu.cn/"+r.action, cookies=cookies)
         elif r is None:
-            outdate_note = Notify.Notification.new("PEC outdate", "EPC cookies outdate", "dialog-warning")
+            outdate_note = notify2.Notification("PEC outdate", "EPC cookies outdate", "dialog-warning")
             outdate_note.show()
-            break
 
-        delay = (track and randrange(2, 15, 2) or 1 )
+        self.class_menu.addAction(self.exitAction)
+        delay = (track and 3 or randrange(2, 15, 1))
         print("delay {0}".format(delay))
-        sleep( delay*60)
+        QtCore.QTimer.singleShot(delay * 60000, self.quary)
+
+        return track
 
 
 if __name__ == '__main__':
-
-    if len(sys.argv) == 1:
-        sys.argv.append('--help')
 
     parser = ArgumentParser(description='monitor the epc site')
 
@@ -111,9 +183,17 @@ if __name__ == '__main__':
     week_line = args.week_line
 
     c = dict()
-    for k,v in cookies.items():
-        c[k] = v.value
+    if cookies:
+        for k,v in cookies.items():
+            c[k] = v.value
 
-    main(c, week_line)
+    #main(c, week_line)
     #extract(BS(open('1.html')))
+
+    app = QtGui.QApplication(sys.argv)
+    QtGui.QApplication.setQuitOnLastWindowClosed(False)
+    style = app.style()
+    e = EPC_Quary(c, week_line)
+
+    sys.exit(app.exec_())
 
