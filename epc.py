@@ -188,7 +188,6 @@ if __name__ == '__main__':
             c[k] = v.value
 
     #main(c, week_line)
-    #extract(BS(open('1.html')))
 
     app = QtGui.QApplication(sys.argv)
     QtGui.QApplication.setQuitOnLastWindowClosed(False)
