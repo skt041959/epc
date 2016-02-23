@@ -187,7 +187,7 @@ if __name__ == '__main__':
         for k,v in cookies.items():
             c[k] = v.value
 
-    #main(c, week_line)
+    #main(c, week_line) #test
 
     app = QtGui.QApplication(sys.argv)
     QtGui.QApplication.setQuitOnLastWindowClosed(False)
